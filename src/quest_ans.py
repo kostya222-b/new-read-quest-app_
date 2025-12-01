@@ -1,24 +1,32 @@
-
 import os
 import uvicorn
-
-from fastapi import FastAPI, HTTPException
+import httpx
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-
 
 tags_metadata = [
     {
         'name': 'SEARCH ANSWERS',
         'description': 'API для поиска правильных ответов.',
+    },
+    {
+        'name': 'YANDEX GPT',
+        'description': 'Прокси для запросов к Yandex GPT.',
     }
 ]
 
-origin_endpoint = ['https://iomqt-vo.edu.rosminzdrav.ru', 'https://iomqt-spo.edu.rosminzdrav.ru', 'https://iomqt-nmd.edu.rosminzdrav.ru']
+origin_endpoint = [
+    'https://iomqt-vo.edu.rosminzdrav.ru',
+    'https://iomqt-spo.edu.rosminzdrav.ru',
+    'https://iomqt-nmd.edu.rosminzdrav.ru',
+    'http://localhost',
+    'http://localhost:3000'
+]
 
 app = FastAPI(
     root_path="/api",
     title='API for SEARCH ANSWERS',
-    description='API для поиска правильных ответов',
+    description='API для поиска правильных ответов и прокси для Yandex GPT',
     version='0.1.0',
     openapi_tags=tags_metadata,
 )
@@ -31,13 +39,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.get('/test')
-async def test(
-        quest: str = None
-):
-    # quest = quest.replace('a', 'а')
-    # quest = quest.replace('o', 'о')
+async def test(quest: str = None):
     this_folder = os.getcwd()
     beg_beg = 0
     if quest:
@@ -64,12 +67,9 @@ async def test(
                             cleaned_i = cleaned_i[0:-1] if cleaned_i[-1] == '.' else cleaned_i
                             cleaned_i = cleaned_i[1:] if cleaned_i[0] == '~' else cleaned_i
                             cleaned_i = cleaned_i[2:].strip()
-                            # cleaned_i = cleaned_i.replace('а', 'a')
-                            # cleaned_i = cleaned_i.replace('о', 'o')
                             true_answers_list.append(cleaned_i)
             else:
                 raise HTTPException(status_code=404, detail='Нет такого вопроса')
-
         if len(true_answers_list) == 0:
             quest = quest.replace('a', 'а')
             quest = quest.replace('o', 'о')
@@ -92,13 +92,9 @@ async def test(
                                 cleaned_i = cleaned_i[0:-1] if cleaned_i[-1] == '.' else cleaned_i
                                 cleaned_i = cleaned_i[1:] if cleaned_i[0] == '~' else cleaned_i
                                 cleaned_i = cleaned_i[2:].strip()
-                                # cleaned_i = cleaned_i.replace('а', 'a')
-                                # cleaned_i = cleaned_i.replace('о', 'o')
                                 true_answers_list.append(cleaned_i)
-                    # return true_answers_list
                 else:
                     raise HTTPException(status_code=404, detail='Нет такого вопроса')
-
         if len(true_answers_list) == 0:
             quest = quest.replace('а', 'a')
             quest = quest.replace('о', 'o')
@@ -121,22 +117,41 @@ async def test(
                                 cleaned_i = cleaned_i[0:-1] if cleaned_i[-1] == '.' else cleaned_i
                                 cleaned_i = cleaned_i[1:] if cleaned_i[0] == '~' else cleaned_i
                                 cleaned_i = cleaned_i[2:].strip()
-                                # cleaned_i = cleaned_i.replace('а', 'a')
-                                # cleaned_i = cleaned_i.replace('о', 'o')
                                 true_answers_list.append(cleaned_i)
-                    # return true_answers_list
                 else:
                     raise HTTPException(status_code=404, detail='Нет такого вопроса')
-
         new_true_answers_list = []
         for i in true_answers_list:
             new_i = i.replace('а', 'a')
             new_i = new_i.replace('о', 'o')
             new_true_answers_list.append(new_i)
-
             new_i = i.replace('a', 'а')
             new_i = new_i.replace('o', 'о')
             new_true_answers_list.append(new_i)
         return true_answers_list + new_true_answers_list
     else:
         raise HTTPException(status_code=404, detail='Нет такого вопроса')
+
+@app.post('/proxy-yandex-gpt')
+async def proxy_yandex_gpt(request: Request):
+    try:
+        body = await request.json()
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": "Api-Key aje7d9vbut2at538rm45"
+        }
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://llm.api.cloud.yandex.net/foundationModels/v1/completion",
+                json=body,
+                headers=headers
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=f"Ошибка Yandex GPT: {e.response.text}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
