@@ -14,6 +14,7 @@ app.add_middleware(
         "https://iomqt-vo.edu.rosminzdrav.ru",
         "http://localhost",
         "http://localhost:3000",
+        "chrome-extension://*",  # Разрешите запросы из расширений Chrome
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -22,15 +23,13 @@ app.add_middleware(
 
 @app.post('/api/proxy-yandex-gpt')
 async def proxy_yandex_gpt(request: Request):
-    try:
-        logger.info(f"Headers: {dict(request.headers)}")  # Логируем все заголовки
+    try
         body = await request.json()
-        authorization_header = request.headers.get("x-authorization", "aje7d9vbut2at538rm45")
-        logger.info(f"Authorization header: {authorization_header}")  # Логируем заголовок авторизации
-
+        api_key = request.headers.get("x-api-key", "ajein83nav86ofnetb76")
+        logger.info(f"API Key: {api_key}")
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Api-Key {authorization_header}"
+            "Authorization": f"Api-Key {api_key}"
         }
         async with httpx.AsyncClient() as client:
             response = await client.post(
