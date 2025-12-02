@@ -8,13 +8,14 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+# Настройка CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://iomqt-vo.edu.rosminzdrav.ru",
-        "http://localhost",
-        "http://localhost:3000",
-        "chrome-extension://*",  # Разрешите запросы из расширений Chrome
+        "https://iomqt-vo.edu.rosminzdrav.ru",  # Основной домен
+        "http://localhost",                      # Для локальной разработки
+        "http://localhost:3000",                # Для локальной разработки
+        "chrome-extension://*",                  # Для расширений Chrome
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -23,14 +24,16 @@ app.add_middleware(
 
 @app.post('/api/proxy-yandex-gpt')
 async def proxy_yandex_gpt(request: Request):
-    try
+    try:
         body = await request.json()
-        api_key = request.headers.get("x-api-key", "ajein83nav86ofnetb76")
+        api_key = request.headers.get("x-api-key", "aje7d9vbut2at538rm45")
         logger.info(f"API Key: {api_key}")
+
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Api-Key {api_key}"
         }
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 "https://llm.api.cloud.yandex.net/foundationModels/v1/completion",
@@ -38,7 +41,9 @@ async def proxy_yandex_gpt(request: Request):
                 headers=headers
             )
             response.raise_for_status()
+            logger.info(f"Ответ от Yandex GPT: {response.text}")
             return response.json()
+
     except httpx.HTTPStatusError as e:
         logger.error(f"HTTP error: {e.response.status_code}, {e.response.text}")
         raise HTTPException(status_code=e.response.status_code, detail=f"Ошибка Yandex GPT: {e.response.text}")
