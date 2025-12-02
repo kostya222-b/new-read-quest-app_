@@ -12,41 +12,45 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://iomqt-vo.edu.rosminzdrav.ru",  # Основной домен
-        "http://localhost",                      # Для локальной разработки
-        "http://localhost:3000",                # Для локальной разработки
-        "chrome-extension://*",                  # Для расширений Chrome
+        "https://iomqt-vo.edu.rosminzdrav.ru",
+        "http://localhost",
+        "http://localhost:3000",
+        "chrome-extension://*",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.post('/api/proxy-yandex-gpt')
-async def proxy_yandex_gpt(request: Request):
+# Обработчик OPTIONS-запросов
+@app.options("/api/proxy-mistral")
+async def options_handler(request: Request):
+    return {"status": "ok"}
+
+# Прокси-эндпоинт для Mistral AI
+@app.post('/api/proxy-mistral')
+async def proxy_mistral(request: Request):
     try:
         body = await request.json()
-        api_key = request.headers.get("x-api-key", "aje7d9vbut2at538rm45")
-        logger.info(f"API Key: {api_key}")
+        api_key = "vIbfcVlLsLylHUHN19BiZUyc6amzLSVE"  # Ваш API-ключ Mistral AI
 
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Api-Key {api_key}"
+            "Authorization": f"Bearer {api_key}"
         }
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "https://llm.api.cloud.yandex.net/foundationModels/v1/completion",
+                "https://api.mistral.ai/v1/chat/completions",
                 json=body,
                 headers=headers
             )
             response.raise_for_status()
-            logger.info(f"Ответ от Yandex GPT: {response.text}")
             return response.json()
 
     except httpx.HTTPStatusError as e:
         logger.error(f"HTTP error: {e.response.status_code}, {e.response.text}")
-        raise HTTPException(status_code=e.response.status_code, detail=f"Ошибка Yandex GPT: {e.response.text}")
+        raise HTTPException(status_code=e.response.status_code, detail=f"Ошибка Mistral AI: {e.response.text}")
     except Exception as e:
         logger.error(f"Server error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
